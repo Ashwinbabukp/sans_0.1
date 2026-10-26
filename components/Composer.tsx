@@ -121,7 +121,7 @@ export default function Composer({ open, onClose, onPost }: Props) {
           <button key={m.key} className="chip" aria-pressed={mood === m.key} onClick={() => setMood(mood === m.key ? null : m.key)}>{m.label}</button>
         )))}
         <div className="grp">
-          <span className="lbl">Tags (hidden on the card, used for search)</span>
+          <span className="lbl">Tags</span>
           <div className="cin">
             <input
               value={tagInput} maxLength={21} placeholder="Add a tag, like love or life" aria-label="Add a tag"
@@ -130,10 +130,14 @@ export default function Composer({ open, onClose, onPost }: Props) {
             />
             <button className="post" disabled={!cleanTag(tagInput) || tags.length >= MAX_TAGS} onClick={() => addTag(tagInput)}>Add</button>
           </div>
-          <div className="row">
-            {tags.map((t) => (
-              <button key={t} className="chip" aria-label={`Remove tag ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>#{t} ×</button>
-            ))}
+          {tags.length > 0 && (
+            <div className="row" aria-label="Selected tags">
+              {tags.map((t) => (
+                <button key={t} className="chip" aria-label={`Remove tag ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>#{t} ×</button>
+              ))}
+            </div>
+          )}
+          <div className="row" aria-label="Suggested tags">
             {SUGGESTED.filter((s) => !tags.includes(s)).map((s) => (
               <button key={s} className="chip sug" disabled={tags.length >= MAX_TAGS} onClick={() => addTag(s)}>+ {s}</button>
             ))}
