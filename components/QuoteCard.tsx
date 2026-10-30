@@ -4,7 +4,7 @@ import { useRef, useState, type PointerEvent as RPE } from 'react';
 import type { Notify, Quote } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { authorOf, cardStyle, fmt, initials } from '@/lib/utils';
-import { BookmarkIcon, CommentIcon, HeartIcon, MoreIcon, ShareIcon } from './Icons';
+import { BookmarkIcon, CommentIcon, HeartIcon, MoreIcon, ShareIcon, CatDoodle } from './Icons';
 
 interface Props {
   quote: Quote;
@@ -57,6 +57,8 @@ export default function QuoteCard({ quote, qotd, onOpenProfile, onComments, onMe
     }
   }
 
+  const hasCat = quote.sticker === 'cat' || quote.author === 'sunny.days';
+
   return (
     <section
       className="card"
@@ -67,14 +69,20 @@ export default function QuoteCard({ quote, qotd, onOpenProfile, onComments, onMe
       onPointerCancel={() => { start.current = null; }}
     >
       {qotd && <span className="qotd">✦ Quote of the day</span>}
-      {quote.sticker && <span className="stk" aria-hidden="true">{quote.sticker}</span>}
 
-      <p
-        className={`q f-${quote.font} k-${quote.size}${quote.text.length > 90 ? ' long' : ''}`}
-        style={{ textAlign: quote.align }}
-      >
-        “{quote.text}”
-      </p>
+      <div className="card-center">
+        <p
+          className={`q f-${quote.font} k-${quote.size}${quote.text.length > 90 ? ' long' : ''}`}
+          style={{ textAlign: quote.align }}
+        >
+          {quote.font === 'poster' ? quote.text : `“${quote.text}”`}
+        </p>
+        {hasCat && (
+          <div className="quote-cat-doodle" aria-hidden="true">
+            <CatDoodle size={68} />
+          </div>
+        )}
+      </div>
 
       <div className="by">
         <div
@@ -85,8 +93,16 @@ export default function QuoteCard({ quote, qotd, onOpenProfile, onComments, onMe
           onClick={() => onOpenProfile(a.key)}
           onKeyDown={(e) => { if (e.key === 'Enter') onOpenProfile(a.key); }}
         >
-          <span className="av">{initials(a.name)}</span>
-          <div><b>{a.name}</b><small>@{a.user}</small></div>
+          <span
+            className="av"
+            style={a.key === 'me' && me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
+          >
+            {!(a.key === 'me' && me.avatar) && initials(a.name)}
+          </span>
+          <div>
+            <b>{a.name}</b>
+            <small>@{a.user}</small>
+          </div>
         </div>
         {!quote.mine && (
           <button
@@ -104,19 +120,24 @@ export default function QuoteCard({ quote, qotd, onOpenProfile, onComments, onMe
 
       <div className="acts">
         <button className="act like" aria-pressed={quote.liked} aria-label="Like" onClick={likeIt}>
-          <span className="ic"><HeartIcon /></span>{fmt(quote.likes)}
+          <span className="ic"><HeartIcon /></span>
+          <span className="act-count">{fmt(quote.likes)}</span>
         </button>
         <button className="act" aria-label="Comments" onClick={() => onComments(quote.id)}>
-          <span className="ic"><CommentIcon /></span>{quote.comments.length}
+          <span className="ic"><CommentIcon /></span>
+          <span className="act-count">{quote.comments?.length ?? 0}</span>
         </button>
         <button className="act" aria-pressed={saved} aria-label="Save" onClick={toggleSave}>
-          <span className="ic"><BookmarkIcon /></span>{saved ? 'Saved' : 'Save'}
+          <span className="ic"><BookmarkIcon /></span>
+          <span className="act-count">{saved ? 'Saved' : 'Save'}</span>
         </button>
         <button className="act" aria-label="Share as Instagram card" onClick={() => onShare(quote.id)}>
-          <span className="ic"><ShareIcon /></span>Share
+          <span className="ic"><ShareIcon /></span>
+          <span className="act-count">Share</span>
         </button>
         <button className="act" aria-label="More options" onClick={() => onMenu(quote.id)}>
-          <span className="ic"><MoreIcon /></span>More
+          <span className="ic"><MoreIcon /></span>
+          <span className="act-count">More</span>
         </button>
       </div>
 

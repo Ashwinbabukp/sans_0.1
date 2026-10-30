@@ -38,7 +38,9 @@ export default function ProfilePage({ userKey, onBack, onEdit, onOpenQuote, onSi
       </div>
 
       <div className="phead">
-        <span className="pav" style={cardStyle(list[0]?.theme ?? 0)}>{initials(name)}</span>
+        <span className="pav" style={self && me.avatar ? { backgroundImage: `url("${me.avatar}")` } : cardStyle(list[0]?.theme ?? 0)}>
+          {(!self || !me.avatar) && initials(name)}
+        </span>
         <h2>{name}</h2>
         <p>@{user}</p>
         <p>{self ? me.bio || 'Add a short bio so people know who you are.' : 'Shares short quotes on Sans.'}</p>

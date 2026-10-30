@@ -1,47 +1,92 @@
 'use client';
 
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { Align, FontKey, Mood, NewQuote, Size, TextColor } from '@/lib/types';
 import { THEMES } from '@/lib/themes';
 import { FONTS } from '@/lib/fonts';
-import { MOODS, STICKERS } from '@/lib/moods';
-import { cardStyle, cleanTag, resizeImage, splitTags } from '@/lib/utils';
-import { useDialog } from '@/lib/useDialog';
+import { MOODS } from '@/lib/moods';
+import { cardStyle, cleanTag, initials, resizeImage, splitTags } from '@/lib/utils';
+import { useStore } from '@/lib/store';
+import {
+  AlignIcon,
+  ArrowRightIcon,
+  CloseIcon,
+  FontIcon,
+  PaletteIcon,
+  PhotoIcon,
+  SparkleIcon,
+  TagIcon,
+} from './Icons';
 
-interface Props { open: boolean; onClose: () => void; onPost: (q: NewQuote) => void }
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  onPost: (q: NewQuote) => void;
+}
 
+type ActiveTool = 'font' | 'color' | 'photo' | 'mood' | 'tags' | null;
+const SUGGESTED_TAGS = ['vibes', 'life', 'motivation', 'calm', 'love', 'growth'];
 const MAX_TAGS = 5;
-const SUGGESTED = ['life', 'love', 'motivation', 'friendship', 'selflove', 'gratitude'];
-
-const ALIGNS: { k: Align; l: string }[] = [{ k: 'left', l: 'Left' }, { k: 'center', l: 'Center' }, { k: 'right', l: 'Right' }];
-const SIZES: { k: Size; l: string }[] = [{ k: 's', l: 'S' }, { k: 'm', l: 'M' }, { k: 'l', l: 'L' }];
-const COLORS: { k: TextColor; l: string }[] = [{ k: 'auto', l: 'Auto' }, { k: 'dark', l: 'Dark' }, { k: 'light', l: 'Light' }];
 
 export default function Composer({ open, onClose, onPost }: Props) {
-  const { ref, ...dlg } = useDialog(open, onClose);
-  const [fileEl, setFileEl] = useState<HTMLInputElement | null>(null);
+  const { me } = useStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const [text, setText] = useState('');
-  const [font, setFont] = useState<FontKey>('serif');
-  const [theme, setTheme] = useState(0);
+  const [font, setFont] = useState<FontKey>('poster');
+  const [theme, setTheme] = useState(1); // Vanilla Cream by default
   const [img, setImg] = useState<string | null>(null);
-  const [align, setAlign] = useState<Align>('left');
+  const [align, setAlign] = useState<Align>('center');
   const [size, setSize] = useState<Size>('m');
   const [textColor, setTextColor] = useState<TextColor>('auto');
-  const [sticker, setSticker] = useState<string | null>(null);
   const [mood, setMood] = useState<Mood | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const [error, setError] = useState('');
-  const [mode, setMode] = useState<'color' | 'photo'>('color');
-  // Only one background at a time: a colour OR a photo, never both.
-  const bg = mode === 'photo' ? img : null;
 
-  async function pickImage(e: ChangeEvent<HTMLInputElement>) {
+  // Auto-focus the textarea when composer opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => textareaRef.current?.focus(), 150);
+    } else {
+      setActiveTool(null);
+    }
+  }, [open]);
+
+  // Handle escape key to close
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  async function handlePickImage(e: ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     e.target.value = '';
     if (!f) return;
-    try { setImg(await resizeImage(f)); setMode('photo'); setError(''); }
-    catch { setError('That file isn’t an image. Choose a photo.'); }
+    try {
+      const resized = await resizeImage(f);
+      setImg(resized);
+      setError('');
+      setActiveTool(null);
+    } catch {
+      setError('Please choose a valid photo.');
+    }
+  }
+
+  function cycleAlign() {
+    setAlign((cur) => (cur === 'center' ? 'left' : cur === 'left' ? 'right' : 'center'));
+  }
+
+  function toggleTool(tool: ActiveTool) {
+    setActiveTool((cur) => (cur === tool ? null : tool));
   }
 
   function addTag(raw: string) {
@@ -51,105 +96,322 @@ export default function Composer({ open, onClose, onPost }: Props) {
     setTagInput('');
   }
 
-  function post() {
+  function removeTag(t: string) {
+    setTags(tags.filter((x) => x !== t));
+  }
+
+  function handlePost() {
     const t = text.trim();
     if (!t) return;
     const split = splitTags(t);
-    const all = [...new Set([...tags, ...split.tags])].slice(0, MAX_TAGS);
-    onPost({ text: split.text, theme, font, img: bg, align, size, textColor, sticker, mood, tags: all });
-    setText(''); setImg(null); setMode('color'); setSticker(null); setMood(null); setTags([]); setTagInput(''); setError('');
+    const allTags = [...new Set([...tags, ...split.tags])].slice(0, MAX_TAGS);
+
+    onPost({
+      text: split.text,
+      theme,
+      font,
+      img,
+      align,
+      size,
+      textColor,
+      sticker: 'cat',
+      mood,
+      tags: allTags,
+    });
+
+    // Reset state
+    setText('');
+    setImg(null);
+    setTheme(1);
+    setFont('poster');
+    setAlign('center');
+    setMood(null);
+    setTags([]);
+    setTagInput('');
+    setActiveTool(null);
     onClose();
   }
 
-  const group = (label: string, children: ReactNode) => (
-    <div className="grp"><span className="lbl">{label}</span><div className="row">{children}</div></div>
-  );
-
   return (
-    <dialog ref={ref} {...dlg} aria-labelledby="composer-title">
-      <div className="sheet">
-        <h2 id="composer-title">Write a quote</h2>
+    <div className="story-composer" style={cardStyle(theme, img, textColor)}>
+      {/* Hidden File Input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={handlePickImage}
+      />
 
-        <div className="prev" style={cardStyle(theme, bg, textColor)}>
-          {sticker && <span className="pstk" aria-hidden="true">{sticker}</span>}
-          <p className={`f-${font} k-${size}`} style={{ textAlign: align }}>
-            {text.trim() ? `“${splitTags(text.trim()).text}”` : 'Your words will look like this.'}
-          </p>
-        </div>
+      {/* Minimal Top Bar: Close button on Left */}
+      <header className="sc-top">
+        <button
+          type="button"
+          className="sc-icon-btn close"
+          aria-label="Discard and close"
+          onClick={onClose}
+        >
+          <CloseIcon />
+        </button>
+      </header>
 
-        <textarea
-          value={text} maxLength={180} aria-label="Quote text"
-          placeholder="Type your quote"
-          onChange={(e) => setText(e.target.value)}
-        />
-        <span className="count">{text.length} / 180</span>
+      {/* Right Side Vertical Dock for all tools */}
+      <aside className="sc-right-dock" aria-label="Creation tools">
+        {/* Typography / Font Tool */}
+        <button
+          type="button"
+          className={`sc-icon-btn ${activeTool === 'font' ? 'active' : ''}`}
+          aria-label="Typography"
+          title="Fonts"
+          onClick={() => toggleTool('font')}
+        >
+          <FontIcon />
+        </button>
 
-        {group('Font', FONTS.map((f) => (
-          <button key={f.key} className={`chip f-${f.key}`} aria-pressed={font === f.key} onClick={() => setFont(f.key)}>{f.label}</button>
-        )))}
+        {/* Color Palette / Theme Tool */}
+        <button
+          type="button"
+          className={`sc-icon-btn ${activeTool === 'color' ? 'active' : ''}`}
+          aria-label="Colors & themes"
+          title="Color Themes"
+          onClick={() => toggleTool('color')}
+        >
+          <PaletteIcon />
+        </button>
 
-        {group('Background', <>
-          <button className="chip" aria-pressed={mode === 'color'} onClick={() => setMode('color')}>Colour</button>
-          <button className="chip" aria-pressed={mode === 'photo'} onClick={() => { setMode('photo'); if (!img) fileEl?.click(); }}>Photo</button>
-          <input ref={setFileEl} type="file" accept="image/*" hidden onChange={pickImage} />
-        </>)}
-        {mode === 'color'
-          ? group('Pick a colour', THEMES.map((t, i) => (
-            <button key={t.name} className="sw" style={cardStyle(i)} aria-label={t.name}
-              aria-pressed={i === theme} onClick={() => setTheme(i)} />
-          )))
-          : group('Photo', <>
-            <button className="chip" onClick={() => fileEl?.click()}>{img ? 'Change photo' : 'Choose from gallery'}</button>
-            {img && <button className="chip" onClick={() => { setImg(null); setMode('color'); }}>Remove photo</button>}
-          </>)}
-        {error && <p className="err" role="alert">{error}</p>}
+        {/* Photo / Background Tool */}
+        <button
+          type="button"
+          className={`sc-icon-btn ${img ? 'has-photo' : ''} ${activeTool === 'photo' ? 'active' : ''}`}
+          aria-label="Background photo"
+          title="Photo Background"
+          onClick={() => {
+            if (img) toggleTool('photo');
+            else fileInputRef.current?.click();
+          }}
+        >
+          <PhotoIcon />
+        </button>
 
-        {group('Style', <>
-          {ALIGNS.map((x) => <button key={x.k} className="chip" aria-pressed={align === x.k} onClick={() => setAlign(x.k)}>{x.l}</button>)}
-          {SIZES.map((x) => <button key={x.k} className="chip" aria-label={`Size ${x.l}`} aria-pressed={size === x.k} onClick={() => setSize(x.k)}>{x.l}</button>)}
-          {COLORS.map((x) => <button key={x.k} className="chip" aria-label={`${x.l} text`} aria-pressed={textColor === x.k} onClick={() => setTextColor(x.k)}>{x.l}</button>)}
-        </>)}
+        {/* Mood Selector Tool */}
+        <button
+          type="button"
+          className={`sc-icon-btn ${mood ? 'has-mood' : ''} ${activeTool === 'mood' ? 'active' : ''}`}
+          aria-label="Select mood"
+          title="Mood"
+          onClick={() => toggleTool('mood')}
+        >
+          <SparkleIcon />
+        </button>
 
-        {group('Sticker', <>
-          <button className="chip" aria-pressed={sticker === null} onClick={() => setSticker(null)}>None</button>
-          {STICKERS.map((s) => (
-            <button key={s} className="chip stkb" aria-label={`Sticker ${s}`} aria-pressed={sticker === s} onClick={() => setSticker(s)}>{s}</button>
-          ))}
-        </>)}
+        {/* Text Alignment */}
+        <button
+          type="button"
+          className="sc-icon-btn"
+          aria-label={`Alignment: ${align}`}
+          title={`Align: ${align}`}
+          onClick={cycleAlign}
+        >
+          <AlignIcon align={align} />
+        </button>
 
-        {group('Mood', MOODS.map((m) => (
-          <button key={m.key} className="chip" aria-pressed={mood === m.key} onClick={() => setMood(mood === m.key ? null : m.key)}>{m.label}</button>
-        )))}
-        <div className="grp">
-          <span className="lbl">Tags</span>
-          <div className="cin">
-            <input
-              value={tagInput} maxLength={21} placeholder="Add a tag, like love or life" aria-label="Add a tag"
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput); } }}
-            />
-            <button className="post" disabled={!cleanTag(tagInput) || tags.length >= MAX_TAGS} onClick={() => addTag(tagInput)}>Add</button>
-          </div>
+        {/* Tags Tool */}
+        <button
+          type="button"
+          className={`sc-icon-btn ${tags.length > 0 ? 'has-tags' : ''} ${activeTool === 'tags' ? 'active' : ''}`}
+          aria-label="Add tags"
+          title="Tags"
+          onClick={() => toggleTool('tags')}
+        >
+          <TagIcon />
+        </button>
+      </aside>
+
+      {/* Main Card Canvas with Direct-on-Screen Text Editing */}
+      <main
+        className="sc-canvas"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) textareaRef.current?.focus();
+        }}
+      >
+        <div className="sc-card-content">
+          <textarea
+            ref={textareaRef}
+            className={`sc-input f-${font} k-${size}`}
+            style={{ textAlign: align }}
+            value={text}
+            maxLength={180}
+            placeholder="Type your quote…"
+            aria-label="Write quote"
+            rows={4}
+            onChange={(e) => setText(e.target.value)}
+          />
+
+          {/* Tag Pill Preview inside the Canvas */}
           {tags.length > 0 && (
-            <div className="row" aria-label="Selected tags">
+            <div className="sc-canvas-tags" style={{ justifyContent: align }}>
               {tags.map((t) => (
-                <button key={t} className="chip" aria-label={`Remove tag ${t}`} onClick={() => setTags(tags.filter((x) => x !== t))}>#{t} ×</button>
+                <span key={t} className="sc-canvas-tag" onClick={() => removeTag(t)}>
+                  #{t} ×
+                </span>
               ))}
             </div>
           )}
-          <div className="row" aria-label="Suggested tags">
-            {SUGGESTED.filter((s) => !tags.includes(s)).map((s) => (
-              <button key={s} className="chip sug" disabled={tags.length >= MAX_TAGS} onClick={() => addTag(s)}>+ {s}</button>
-            ))}
-          </div>
-        </div>
 
-
-        <div className="row">
-          <button className="chip" onClick={onClose}>Cancel</button>
-          <button className="post" style={{ flex: 1 }} disabled={!text.trim()} onClick={post}>Post quote</button>
+          {error && <p className="sc-error">{error}</p>}
         </div>
-      </div>
-    </dialog>
+      </main>
+
+      {/* Dynamic Drawer / Floating Strip for Active Tool */}
+      {activeTool && (
+        <section className="sc-drawer" aria-label="Tool options">
+          {activeTool === 'font' && (
+            <div className="sc-strip fonts">
+              {FONTS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`sc-pill-btn f-${f.key} ${font === f.key ? 'selected' : ''}`}
+                  onClick={() => setFont(f.key)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {activeTool === 'color' && (
+            <div className="sc-strip colors" role="group" aria-label="Color themes">
+              {THEMES.map((t, idx) => (
+                <button
+                  key={t.name}
+                  type="button"
+                  className={`sc-swatch ${idx === theme && !img ? 'selected' : ''}`}
+                  style={{ background: t.bg }}
+                  title={t.name}
+                  aria-label={t.name}
+                  onClick={() => {
+                    setTheme(idx);
+                    setImg(null); // Return to color theme
+                  }}
+                >
+                  <span className="sc-swatch-inner" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {activeTool === 'photo' && (
+            <div className="sc-strip photo-actions">
+              <button
+                type="button"
+                className="sc-pill-btn"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Choose from gallery
+              </button>
+              {img && (
+                <button
+                  type="button"
+                  className="sc-pill-btn danger"
+                  onClick={() => {
+                    setImg(null);
+                    setActiveTool(null);
+                  }}
+                >
+                  Remove photo
+                </button>
+              )}
+            </div>
+          )}
+
+          {activeTool === 'mood' && (
+            <div className="sc-strip moods">
+              {MOODS.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  className={`sc-pill-btn ${mood === m.key ? 'selected' : ''}`}
+                  onClick={() => setMood(mood === m.key ? null : m.key)}
+                >
+                  ✦ {m.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {activeTool === 'tags' && (
+            <div className="sc-tag-drawer">
+              <div className="sc-tag-input-row">
+                <input
+                  type="text"
+                  value={tagInput}
+                  maxLength={20}
+                  placeholder="Add hashtag, e.g. vibes"
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ',') {
+                      e.preventDefault();
+                      addTag(tagInput);
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="sc-tag-add-btn"
+                  disabled={!cleanTag(tagInput) || tags.length >= MAX_TAGS}
+                  onClick={() => addTag(tagInput)}
+                >
+                  Add
+                </button>
+              </div>
+              <div className="sc-suggested-tags">
+                {SUGGESTED_TAGS.filter((s) => !tags.includes(s)).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className="sc-tag-chip"
+                    onClick={() => addTag(s)}
+                    disabled={tags.length >= MAX_TAGS}
+                  >
+                    +{s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Floating Bottom Bar matching Instagram Story Creator */}
+      <footer className="sc-bottom">
+        <button
+          type="button"
+          className="sc-feed-btn"
+          onClick={handlePost}
+          disabled={!text.trim()}
+          aria-label="Share to Feed"
+        >
+          <span
+            className="sc-avatar"
+            style={me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
+          >
+            {!me.avatar && initials(me.name)}
+          </span>
+          <span className="sc-feed-label">Share to feed</span>
+        </button>
+
+        {/* Big Circular Next / Post Arrow Button */}
+        <button
+          type="button"
+          className="sc-publish-circle"
+          onClick={handlePost}
+          disabled={!text.trim()}
+          aria-label="Post quote"
+        >
+          <ArrowRightIcon />
+        </button>
+      </footer>
+    </div>
   );
 }

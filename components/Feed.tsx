@@ -32,9 +32,13 @@ export default function Feed(p: Props) {
     const el = ref.current;
     if (!el) return;
     const cards = el.querySelectorAll<HTMLElement>('.card');
-    if (!cards.length) { onFg('#2D2552'); return; }
-    const i = Math.min(Math.round(el.scrollTop / el.clientHeight), cards.length - 1);
-    onFg(getComputedStyle(cards[i]).getPropertyValue('--fg').trim() || '#fff');
+    if (!cards.length) { onFg('#052BA8'); return; }
+    const h = el.clientHeight || 1;
+    const i = Math.max(0, Math.min(Math.round(el.scrollTop / h), cards.length - 1));
+    const target = cards[i] ?? cards[0];
+    if (target) {
+      onFg(getComputedStyle(target).getPropertyValue('--fg').trim() || '#fff');
+    }
   }, [onFg]);
 
   useEffect(() => { ref.current?.scrollTo({ top: 0 }); paint(); }, [resetKey, firstId, paint]);

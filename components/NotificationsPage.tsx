@@ -22,7 +22,7 @@ export default function NotificationsPage({ onBack, onOpenQuote }: { onBack: () 
       </div>
       <p className="muted pad">Demo mode: sample accounts react to quotes you post. With a backend connected, these become real.</p>
       <div className="nlist">
-        {notifications.length ? notifications.map((n) => (
+        {notifications.filter((n) => n && n.user).length ? notifications.filter((n) => n && n.user).map((n) => (
           <button key={n.id} className="nrow" onClick={() => n.quoteId && onOpenQuote(n.quoteId)}>
             <span className="av">{initials(titleName(n.user))}</span>
             <span><b>{titleName(n.user)}</b> {line(n)}<small>{timeAgo(n.at)}</small></span>

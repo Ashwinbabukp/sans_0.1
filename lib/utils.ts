@@ -3,7 +3,7 @@ import type { Me, Quote, TextColor } from './types';
 import { THEMES } from './themes';
 
 export function cardStyle(theme: number, img?: string | null, textColor: TextColor = 'auto'): CSSProperties {
-  const over = textColor === 'dark' ? '#14141C' : textColor === 'light' ? '#FFFFFF' : null;
+  const over = textColor === 'dark' ? '#181512' : textColor === 'light' ? '#FFFFFF' : null;
   if (img) {
     return {
       '--bg': '#000', '--solid': '#000', '--fg': over ?? '#fff',

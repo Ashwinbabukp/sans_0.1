@@ -55,9 +55,9 @@ export default function MenuSheet({ quoteId, onClose, notify, onShare, onTag }: 
         {mode === 'menu' ? (
           <>
             <h2 id="menu-title">@{a.user}’s quote</h2>
-            {q.tags.length > 0 && (
+            {(q.tags ?? []).length > 0 && (
               <div className="row">
-                {q.tags.map((t) => (
+                {(q.tags ?? []).map((t) => (
                   <button key={t} className="chip" onClick={() => { onClose(); onTag(`#${t}`); }}>#{t}</button>
                 ))}
               </div>

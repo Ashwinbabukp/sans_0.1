@@ -23,11 +23,16 @@ export default function CommentsSheet({ quoteId, onClose }: { quoteId: string | 
       <div className="sheet">
         <h2 id="cm-title">Comments</h2>
         <div className="cms">
-          {q?.comments.length ? q.comments.map((c) => {
-            const name = c.mine ? me.name : titleName(c.author);
+          {(q?.comments ?? []).filter(Boolean).length ? (q?.comments ?? []).filter(Boolean).map((c) => {
+            const name = c.mine ? me.name : titleName(c.author || 'User');
             return (
               <div className="cm" key={c.id}>
-                <span className="av">{initials(name)}</span>
+                <span
+                  className="av"
+                  style={c.mine && me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
+                >
+                  {!(c.mine && me.avatar) && initials(name)}
+                </span>
                 <div><b>{name}</b><p>{c.text}</p></div>
               </div>
             );

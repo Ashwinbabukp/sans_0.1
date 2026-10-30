@@ -5,6 +5,9 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Sans – share your quotes',
   description: 'Write, swipe and share quotes on pastel cards.',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' };

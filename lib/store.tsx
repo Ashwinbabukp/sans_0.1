@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, type ReactNode } from 'react';
 import type { Comment, Me, NewQuote, Notice, Quote, ThemeMode } from './types';
 import { SEED_QUOTES } from './seed';
 import { uid } from './utils';
+import { createClient } from './supabase/client';
 
 const KEY = 'sans:v3';
 
@@ -37,23 +38,49 @@ const initial: State = {
   theme: 'system', signedIn: false, ready: false,
 };
 
+function sanitizeQuote(q: Quote): Quote {
+  return {
+    ...q,
+    tags: Array.isArray(q.tags) ? q.tags.filter(Boolean) : [],
+    comments: Array.isArray(q.comments) ? q.comments.filter((c) => c && typeof c === 'object') : [],
+    likes: typeof q.likes === 'number' ? q.likes : 0,
+    liked: Boolean(q.liked),
+    collection: q.collection ?? null,
+  };
+}
+
 const mapQuote = (s: State, id: string, fn: (q: Quote) => Quote): Quote[] =>
   s.quotes.map((q) => (q.id === id ? fn(q) : q));
 
 function reducer(s: State, a: Action): State {
   switch (a.type) {
-    case 'hydrate': return { ...s, ...a.payload, ready: true };
+    case 'hydrate': {
+      const payload = a.payload;
+      let quotes = Array.isArray(payload.quotes) && payload.quotes.length > 0
+        ? payload.quotes.map(sanitizeQuote)
+        : s.quotes;
+      if (!quotes.some((q) => q.author === 'sunny.days')) {
+        quotes = [SEED_QUOTES[0], ...quotes];
+      }
+      const notifications = Array.isArray(payload.notifications)
+        ? payload.notifications.filter((n) => n && n.user)
+        : s.notifications;
+      return { ...s, ...payload, quotes, notifications, ready: true };
+    }
     case 'like': return { ...s, quotes: mapQuote(s, a.id, (q) => ({ ...q, liked: !q.liked, likes: q.likes + (q.liked ? -1 : 1) })) };
     case 'save': return { ...s, quotes: mapQuote(s, a.id, (q) => ({ ...q, collection: a.collection })) };
     case 'add': return { ...s, quotes: [a.quote, ...s.quotes] };
     case 'delete': return { ...s, quotes: s.quotes.filter((q) => q.id !== a.id) };
-    case 'comment': return { ...s, quotes: mapQuote(s, a.id, (q) => ({ ...q, comments: [...q.comments, a.comment] })) };
+    case 'comment': return { ...s, quotes: mapQuote(s, a.id, (q) => ({ ...q, comments: [...(q.comments ?? []), a.comment] })) };
     case 'report': return { ...s, reported: [...s.reported, a.id] };
     case 'block': return { ...s, blocked: s.blocked.includes(a.user) ? s.blocked : [...s.blocked, a.user], follows: s.follows.filter((u) => u !== a.user) };
     case 'collection': return s.collections.includes(a.name) ? s : { ...s, collections: [...s.collections, a.name] };
     case 'me': return { ...s, me: { ...s.me, ...a.me } };
     case 'follow': return { ...s, follows: s.follows.includes(a.user) ? s.follows.filter((u) => u !== a.user) : [...s.follows, a.user] };
-    case 'read': return { ...s, notifications: s.notifications.map((n) => ({ ...n, read: true })) };
+    case 'read':
+      return s.notifications.every((n) => n.read)
+        ? s
+        : { ...s, notifications: s.notifications.map((n) => ({ ...n, read: true })) };
     case 'signIn': return { ...s, me: a.me, signedIn: true };
     case 'signOut': return { ...s, signedIn: false };
     case 'theme': return { ...s, theme: a.mode };
@@ -66,7 +93,7 @@ function reducer(s: State, a: Action): State {
       }
       if (a.kind === 'comment') {
         const c: Comment = { id: uid(), author: 'arjun_codes', text: 'Love this one ✨' };
-        return { ...s, quotes: mapQuote(s, a.id, (q) => ({ ...q, comments: [...q.comments, c] })),
+        return { ...s, quotes: mapQuote(s, a.id, (q) => ({ ...q, comments: [...(q.comments ?? []), c] })),
           notifications: [{ id: uid(), type: 'comment', user: 'arjun_codes', quoteId: a.id, text: c.text, read: false, at }, ...s.notifications] };
       }
       return { ...s, followers: s.followers + 1,
@@ -97,6 +124,7 @@ const Ctx = createContext<Store | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
+  const markRead = useCallback(() => dispatch({ type: 'read' }), []);
 
   // Load saved data after mount so server and client render the same first HTML.
   useEffect(() => {
@@ -106,6 +134,58 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch {
       dispatch({ type: 'hydrate', payload: {} });
     }
+
+    // Sync Supabase Auth session & profile
+    const supabase = createClient();
+    if (!supabase) return;
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            const me: Me = {
+              id: session.user.id,
+              name: profile?.display_name || session.user.user_metadata?.full_name || 'You',
+              user: profile?.username || session.user.email?.split('@')[0] || 'you',
+              bio: profile?.bio || '',
+              avatar: profile?.avatar_url || session.user.user_metadata?.avatar_url || null,
+              email: session.user.email,
+            };
+            dispatch({ type: 'signIn', me });
+          });
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            const me: Me = {
+              id: session.user.id,
+              name: profile?.display_name || session.user.user_metadata?.full_name || 'You',
+              user: profile?.username || session.user.email?.split('@')[0] || 'you',
+              bio: profile?.bio || '',
+              avatar: profile?.avatar_url || session.user.user_metadata?.avatar_url || null,
+              email: session.user.email,
+            };
+            dispatch({ type: 'signIn', me });
+          });
+      } else {
+        dispatch({ type: 'signOut' });
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -134,9 +214,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     addCollection: (name) => dispatch({ type: 'collection', name }),
     updateMe: (me) => dispatch({ type: 'me', me }),
     toggleFollow: (user) => dispatch({ type: 'follow', user }),
-    markRead: () => dispatch({ type: 'read' }),
+    markRead,
     signIn: (me) => dispatch({ type: 'signIn', me }),
-    signOut: () => dispatch({ type: 'signOut' }),
+    signOut: () => {
+      const supabase = createClient();
+      if (supabase) {
+        supabase.auth.signOut().catch(() => null);
+      }
+      dispatch({ type: 'signOut' });
+    },
     setTheme: (mode) => dispatch({ type: 'theme', mode }),
   }), [state]);
 

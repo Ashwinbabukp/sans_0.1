@@ -7,5 +7,3 @@ export const MOODS: { key: Mood; label: string }[] = [
   { key: 'funny', label: 'Funny' },
   { key: 'sad', label: 'Sad' },
 ];
-
-export const STICKERS = ['✨', '🌸', '🔥', '💛', '🌙', '☕', '🦋', '🌿'];

@@ -11,8 +11,8 @@ export const SIZES = { post: { w: 1080, h: 1350 }, story: { w: 1080, h: 1920 } }
 type Ctx = CanvasRenderingContext2D;
 interface Box { x: number; y: number; w: number; h: number }
 
-const INK = '#14141C';
-const PURPLE = '#6A2CFF';
+const INK = '#181512';
+const COBALT = '#052BA8';
 
 const loadImg = (src: string) =>
   new Promise<HTMLImageElement>((res, rej) => {
@@ -97,7 +97,7 @@ function drawBrand(ctx: Ctx, cx: number, y: number, size: number, color: string)
   const a = ctx.measureText('sans').width, b = ctx.measureText('.').width;
   const x0 = cx - (a + b) / 2;
   ctx.fillStyle = color; ctx.fillText('sans', x0, y);
-  ctx.fillStyle = PURPLE; ctx.fillText('.', x0 + a, y);
+  ctx.fillStyle = COBALT; ctx.fillText('.', x0 + a, y);
 }
 
 function drawLine(ctx: Ctx, cx: number, y: number, size: number, color: string, alpha: number, text: string) {
@@ -136,13 +136,15 @@ export async function renderShareCard(
   const img = q.img ? await loadImg(q.img) : null;
 
   const f = FONTS.find((x) => x.key === q.font) ?? FONTS[0];
-  await Promise.all([
-    document.fonts.load(`${f.italic ? 'italic ' : ''}${f.weight} 100px ${f.family}, ${INDIC}`, q.text),
-    document.fonts.load('800 60px "Bricolage Grotesque"'),
-    document.fonts.load('400 30px Outfit'),
-    document.fonts.load('700 36px Outfit'),
-    document.fonts.load('400 100px "Young Serif"'),
-  ]).catch(() => undefined);
+  if (typeof document !== 'undefined' && document.fonts?.load) {
+    await Promise.all([
+      document.fonts.load(`${f.italic ? 'italic ' : ''}${f.weight} 100px ${f.family}, ${INDIC}`, q.text),
+      document.fonts.load('800 60px "Bricolage Grotesque"'),
+      document.fonts.load('400 30px Outfit'),
+      document.fonts.load('700 36px Outfit'),
+      document.fonts.load('400 100px "Young Serif"'),
+    ]).catch(() => undefined);
+  }
 
   const cta = `${TAGLINE} ${CTA}`;
 
@@ -158,10 +160,6 @@ export async function renderShareCard(
     ctx.restore();
     paintCard(ctx, q, card, 60, img);
 
-    if (q.sticker) {
-      ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic'; ctx.font = '110px serif';
-      ctx.fillText(q.sticker, card.x + card.w - 70, card.y + 150);
-    }
     drawQuote(ctx, q, { x: card.x + 80, y: card.y + 170, w: card.w - 160, h: card.h - 170 - 230 }, fg, true);
     drawAuthor(ctx, card.x + 80, card.y + card.h - 110, fg, inv, name, user);
 
@@ -185,10 +183,6 @@ export async function renderShareCard(
     ctx.fillText('“', pad - 14, top + 190);
     ctx.globalAlpha = 1;
 
-    if (q.sticker) {
-      ctx.textAlign = 'right'; ctx.font = '110px serif'; ctx.fillStyle = fg;
-      ctx.fillText(q.sticker, W - pad, top + 110);
-    }
     drawQuote(ctx, q, { x: pad, y: top + 110, w: W - pad * 2, h: bottom - top - 130 }, fg, false);
 
     ctx.globalAlpha = 0.5; ctx.fillStyle = fg; ctx.fillRect(pad, bottom + 24, 110, 5); ctx.globalAlpha = 1;

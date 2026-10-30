@@ -28,7 +28,14 @@ export interface Quote {
   comments: Comment[];
 }
 
-export interface Me { name: string; user: string; bio: string }
+export interface Me {
+  id?: string;
+  name: string;
+  user: string;
+  bio: string;
+  avatar?: string | null;
+  email?: string;
+}
 
 export interface NewQuote {
   text: string; theme: number; font: FontKey; img: string | null;
