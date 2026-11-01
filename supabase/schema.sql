@@ -8,9 +8,13 @@ create table if not exists public.profiles (
   display_name text not null,
   bio text default '',
   avatar_url text,
+  banner_url text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+-- Ensure banner_url column exists for existing tables
+alter table public.profiles add column if not exists banner_url text;
 
 -- Automatic Profile Creation Trigger for Email/Password & Google OAuth
 create or replace function public.handle_new_user()
@@ -278,3 +282,35 @@ create policy "Users can view own notifications" on public.notifications for sel
   using (auth.uid() = user_id);
 create policy "Users can mark own notifications read" on public.notifications for update
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- 6. STORAGE BUCKETS & POLICIES (AVATARS & QUOTE IMAGES)
+insert into storage.buckets (id, name, public)
+values ('avatars', 'avatars', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('quote-images', 'quote-images', true)
+on conflict (id) do nothing;
+
+-- Avatars: Anyone can view, authenticated users can upload their own
+drop policy if exists "Avatar images are publicly accessible" on storage.objects;
+create policy "Avatar images are publicly accessible" on storage.objects
+  for select using (bucket_id = 'avatars');
+
+drop policy if exists "Authenticated users can upload avatars" on storage.objects;
+create policy "Authenticated users can upload avatars" on storage.objects
+  for insert with check (bucket_id = 'avatars' and auth.role() = 'authenticated');
+
+drop policy if exists "Users can update their own avatars" on storage.objects;
+create policy "Users can update their own avatars" on storage.objects
+  for update using (bucket_id = 'avatars' and auth.role() = 'authenticated');
+
+-- Quote images: Anyone can view, authenticated users can upload
+drop policy if exists "Quote images are publicly accessible" on storage.objects;
+create policy "Quote images are publicly accessible" on storage.objects
+  for select using (bucket_id = 'quote-images');
+
+drop policy if exists "Authenticated users can upload quote images" on storage.objects;
+create policy "Authenticated users can upload quote images" on storage.objects
+  for insert with check (bucket_id = 'quote-images' and auth.role() = 'authenticated');
+

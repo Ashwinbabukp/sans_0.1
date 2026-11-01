@@ -2,7 +2,8 @@
 
 import { useEffect } from 'react';
 import { useStore } from '@/lib/store';
-import { initials, timeAgo, titleName } from '@/lib/utils';
+import { timeAgo, titleName } from '@/lib/utils';
+import { UserIcon } from './Icons';
 
 export default function NotificationsPage({ onBack, onOpenQuote }: { onBack: () => void; onOpenQuote: (id: string) => void }) {
   const { notifications, markRead } = useStore();
@@ -24,7 +25,7 @@ export default function NotificationsPage({ onBack, onOpenQuote }: { onBack: () 
       <div className="nlist">
         {notifications.filter((n) => n && n.user).length ? notifications.filter((n) => n && n.user).map((n) => (
           <button key={n.id} className="nrow" onClick={() => n.quoteId && onOpenQuote(n.quoteId)}>
-            <span className="av">{initials(titleName(n.user))}</span>
+            <span className="av"><UserIcon /></span>
             <span><b>{titleName(n.user)}</b> {line(n)}<small>{timeAgo(n.at)}</small></span>
           </button>
         )) : <p className="none">Nothing yet. Post a quote and see what happens.</p>}

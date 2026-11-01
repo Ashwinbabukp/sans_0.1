@@ -5,7 +5,7 @@ import type { Align, FontKey, Mood, NewQuote, Size, TextColor } from '@/lib/type
 import { THEMES } from '@/lib/themes';
 import { FONTS } from '@/lib/fonts';
 import { MOODS } from '@/lib/moods';
-import { cardStyle, cleanTag, initials, resizeImage, splitTags } from '@/lib/utils';
+import { cardStyle, cleanTag, resizeImage, splitTags } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 import {
   AlignIcon,
@@ -16,6 +16,7 @@ import {
   PhotoIcon,
   SparkleIcon,
   TagIcon,
+  UserIcon,
 } from './Icons';
 
 interface Props {
@@ -396,7 +397,7 @@ export default function Composer({ open, onClose, onPost }: Props) {
             className="sc-avatar"
             style={me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
           >
-            {!me.avatar && initials(me.name)}
+            {!me.avatar && <UserIcon />}
           </span>
           <span className="sc-feed-label">Share to feed</span>
         </button>

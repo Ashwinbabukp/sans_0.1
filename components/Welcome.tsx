@@ -79,6 +79,7 @@ export default function Welcome() {
   const [user, setUser] = useState(me.user === 'you' ? '' : me.user);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'err' | 'info' } | null>(null);
 
@@ -154,9 +155,10 @@ export default function Welcome() {
           });
         } else {
           setMessage({
-            text: 'Account created! Please check your email to confirm your account.',
+            text: 'Account created! Please check your email to confirm your account, or sign in.',
             type: 'info',
           });
+          setMode('signin');
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -165,11 +167,26 @@ export default function Welcome() {
         });
         if (error) throw error;
 
-        const { data: profile } = await supabase
+        let { data: profile } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', data.user.id)
-          .single();
+          .maybeSingle();
+
+        if (!profile) {
+          const rawUser = data.user.user_metadata?.username || email.split('@')[0];
+          const cleanUser = rawUser.toLowerCase().replace(/[^a-z0-9._]/g, '') || 'you';
+          const { data: created } = await supabase
+            .from('profiles')
+            .upsert({
+              id: data.user.id,
+              username: cleanUser || 'user_' + data.user.id.slice(0, 6),
+              display_name: data.user.user_metadata?.full_name || 'You',
+            })
+            .select('*')
+            .maybeSingle();
+          profile = created;
+        }
 
         signIn({
           id: data.user.id,
@@ -181,8 +198,16 @@ export default function Welcome() {
         });
       }
     } catch (err) {
+      let msg = err instanceof Error ? err.message : 'Authentication failed';
+      if (msg.includes('Invalid login credentials')) {
+        msg = 'Incorrect email or password. Please verify and try again, or sign up.';
+      } else if (msg.includes('User already registered')) {
+        msg = 'This email is already registered. Please sign in instead.';
+      } else if (msg.includes('Email not confirmed')) {
+        msg = 'Please check your inbox to confirm your email before signing in.';
+      }
       setMessage({
-        text: err instanceof Error ? err.message : 'Authentication failed',
+        text: msg,
         type: 'err',
       });
     } finally {
@@ -331,14 +356,37 @@ export default function Welcome() {
 
             <label>
               <span>Password</span>
-              <input
-                type="password"
-                value={password}
-                placeholder="••••••••"
-                minLength={6}
-                required
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  placeholder="••••••••"
+                  minLength={6}
+                  required
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{ width: '100%', paddingRight: '56px' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#6F6A60',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    padding: '4px',
+                  }}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </label>
 
             <button

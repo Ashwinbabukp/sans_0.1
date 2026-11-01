@@ -29,7 +29,11 @@ export function authorOf(q: Quote, me: Me) {
     : { key: q.author, name: titleName(q.author), user: q.author };
 }
 
-export const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
+export const uid = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : '00000000-0000-4000-8000-' + Math.random().toString(16).slice(2, 14).padEnd(12, '0');
+
 
 /** One quote from the community per day, the same for everyone on that date. */
 export function quoteOfDay(quotes: Quote[]): string | null {

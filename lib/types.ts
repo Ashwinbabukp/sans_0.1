@@ -34,6 +34,7 @@ export interface Me {
   user: string;
   bio: string;
   avatar?: string | null;
+  banner?: string | null;
   email?: string;
 }
 

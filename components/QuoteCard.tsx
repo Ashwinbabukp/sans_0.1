@@ -3,8 +3,8 @@
 import { useRef, useState, type PointerEvent as RPE } from 'react';
 import type { Notify, Quote } from '@/lib/types';
 import { useStore } from '@/lib/store';
-import { authorOf, cardStyle, fmt, initials } from '@/lib/utils';
-import { BookmarkIcon, CommentIcon, HeartIcon, MoreIcon, ShareIcon, CatDoodle } from './Icons';
+import { authorOf, cardStyle, fmt } from '@/lib/utils';
+import { BookmarkIcon, CommentIcon, HeartIcon, MoreIcon, ShareIcon, CatDoodle, UserIcon } from './Icons';
 
 interface Props {
   quote: Quote;
@@ -97,7 +97,7 @@ export default function QuoteCard({ quote, qotd, onOpenProfile, onComments, onMe
             className="av"
             style={a.key === 'me' && me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
           >
-            {!(a.key === 'me' && me.avatar) && initials(a.name)}
+            {!(a.key === 'me' && me.avatar) && <UserIcon />}
           </span>
           <div>
             <b>{a.name}</b>

@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useStore } from '@/lib/store';
-import { initials, titleName } from '@/lib/utils';
+import { titleName } from '@/lib/utils';
 import { useDialog } from '@/lib/useDialog';
+import { UserIcon } from './Icons';
 
 export default function CommentsSheet({ quoteId, onClose }: { quoteId: string | null; onClose: () => void }) {
   const { quotes, me, addComment } = useStore();
@@ -31,7 +32,7 @@ export default function CommentsSheet({ quoteId, onClose }: { quoteId: string | 
                   className="av"
                   style={c.mine && me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
                 >
-                  {!(c.mine && me.avatar) && initials(name)}
+                  {!(c.mine && me.avatar) && <UserIcon />}
                 </span>
                 <div><b>{name}</b><p>{c.text}</p></div>
               </div>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Mood, Notify, Quote } from '@/lib/types';
 import { useStore } from '@/lib/store';
 import { MOODS } from '@/lib/moods';
-import { initials, quoteOfDay } from '@/lib/utils';
+import { quoteOfDay } from '@/lib/utils';
 import Feed from './Feed';
 import Composer from './Composer';
 import ProfilePage from './ProfilePage';
@@ -122,7 +122,7 @@ export default function SansApp() {
               onClick={() => setProfile('me')}
               style={me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
             >
-              {!me.avatar && initials(me.name)}
+              {!me.avatar && <UserIcon />}
             </button>
           </div>
         </div>
