@@ -314,3 +314,14 @@ drop policy if exists "Authenticated users can upload quote images" on storage.o
 create policy "Authenticated users can upload quote images" on storage.objects
   for insert with check (bucket_id = 'quote-images' and auth.role() = 'authenticated');
 
+-- 7. AUTO-BACKFILL PROFILES FOR EXISTING REGISTERED USERS
+insert into public.profiles (id, username, display_name, avatar_url)
+select
+  u.id,
+  substr(lower(regexp_replace(coalesce(u.raw_user_meta_data->>'username', split_part(u.email, '@', 1)), '[^a-z0-9._]', '', 'g')), 1, 20),
+  coalesce(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name', split_part(u.email, '@', 1)),
+  u.raw_user_meta_data->>'avatar_url'
+from auth.users u
+on conflict (id) do nothing;
+
+

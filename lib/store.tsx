@@ -447,7 +447,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle()
-          .then(async ({ data: profile }) => {
+          .then(async ({ data: profile, error: pErr }) => {
+            if (pErr) {
+              console.warn('Profiles table check:', pErr.message);
+              return;
+            }
             let userProfile = profile;
             if (!userProfile) {
               const cleanUser =
@@ -468,11 +472,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
             const me: Me = {
               id: session.user.id,
-              name: userProfile?.display_name || session.user.user_metadata?.full_name || 'You',
-              user: userProfile?.username || session.user.email?.split('@')[0] || 'you',
-              bio: userProfile?.bio || '',
-              avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || null,
-              banner: userProfile?.banner_url || null,
+              name: userProfile?.display_name || session.user.user_metadata?.full_name || meRef.current.name,
+              user: userProfile?.username || session.user.email?.split('@')[0] || meRef.current.user,
+              bio: userProfile?.bio || meRef.current.bio || '',
+              avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || meRef.current.avatar || null,
+              banner: userProfile?.banner_url || meRef.current.banner || null,
               email: session.user.email,
             };
             dispatch({ type: 'signIn', me });
@@ -493,7 +497,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           .select('*')
           .eq('id', session.user.id)
           .maybeSingle()
-          .then(async ({ data: profile }) => {
+          .then(async ({ data: profile, error: pErr }) => {
+            if (pErr) {
+              console.warn('Profiles table check on auth state change:', pErr.message);
+              return;
+            }
             let userProfile = profile;
             if (!userProfile) {
               const cleanUser =
@@ -514,11 +522,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
             const me: Me = {
               id: session.user.id,
-              name: userProfile?.display_name || session.user.user_metadata?.full_name || 'You',
-              user: userProfile?.username || session.user.email?.split('@')[0] || 'you',
-              bio: userProfile?.bio || '',
-              avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || null,
-              banner: userProfile?.banner_url || null,
+              name: userProfile?.display_name || session.user.user_metadata?.full_name || meRef.current.name,
+              user: userProfile?.username || session.user.email?.split('@')[0] || meRef.current.user,
+              bio: userProfile?.bio || meRef.current.bio || '',
+              avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || meRef.current.avatar || null,
+              banner: userProfile?.banner_url || meRef.current.banner || null,
               email: session.user.email,
             };
             dispatch({ type: 'signIn', me });
