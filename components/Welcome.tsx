@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { createClient } from '@/lib/supabase/client';
 import Logo from './Logo';
@@ -82,6 +82,21 @@ export default function Welcome() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'err' | 'info' } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const authErr = params.get('auth_error');
+      if (authErr) {
+        setView('auth');
+        setMessage({
+          text: authErr === 'oauth_failed' ? 'Google sign-in could not be completed. Please try again.' : decodeURIComponent(authErr),
+          type: 'err',
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   const supabase = createClient();
 

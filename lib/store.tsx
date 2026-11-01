@@ -439,103 +439,78 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const supabase = createClient();
     if (!supabase) return;
 
-    // Check existing auth session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        supabase
+    const syncUserSession = async (userSession: any) => {
+      if (!userSession?.user) {
+        dispatch({ type: 'signOut' });
+        loadSupabaseData();
+        return;
+      }
+
+      const u = userSession.user;
+      let userProfile: any = null;
+
+      try {
+        const { data: profile, error: pErr } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(async ({ data: profile, error: pErr }) => {
-            if (pErr) {
-              console.warn('Profiles table check:', pErr.message);
-              return;
-            }
-            let userProfile = profile;
-            if (!userProfile) {
-              const cleanUser =
-                (session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'user')
-                  .toLowerCase()
-                  .replace(/[^a-z0-9._]/g, '');
-              const { data: created } = await supabase
-                .from('profiles')
-                .upsert({
-                  id: session.user.id,
-                  username: cleanUser || 'user_' + session.user.id.slice(0, 6),
-                  display_name: session.user.user_metadata?.full_name || 'You',
-                })
-                .select('*')
-                .maybeSingle();
-              userProfile = created;
-            }
+          .eq('id', u.id)
+          .maybeSingle();
 
-            const me: Me = {
-              id: session.user.id,
-              name: userProfile?.display_name || session.user.user_metadata?.full_name || meRef.current.name,
-              user: userProfile?.username || session.user.email?.split('@')[0] || meRef.current.user,
-              bio: userProfile?.bio || meRef.current.bio || '',
-              avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || meRef.current.avatar || null,
-              banner: userProfile?.banner_url || meRef.current.banner || null,
-              email: session.user.email,
-            };
-            dispatch({ type: 'signIn', me });
-            loadSupabaseData(session.user.id);
-          });
-      } else {
-        loadSupabaseData();
+        if (pErr) {
+          console.warn('Profiles table check:', pErr.message);
+        } else {
+          userProfile = profile;
+        }
+      } catch (err) {
+        console.warn('Profiles query error:', err);
       }
+
+      if (!userProfile) {
+        try {
+          const cleanUser =
+            (u.user_metadata?.username || u.user_metadata?.user_name || u.email?.split('@')[0] || 'user')
+              .toLowerCase()
+              .replace(/[^a-z0-9._]/g, '');
+          const { data: created } = await supabase
+            .from('profiles')
+            .upsert({
+              id: u.id,
+              username: cleanUser || 'user_' + u.id.slice(0, 6),
+              display_name: u.user_metadata?.full_name || u.user_metadata?.name || 'You',
+              avatar_url: u.user_metadata?.avatar_url || u.user_metadata?.picture || null,
+            })
+            .select('*')
+            .maybeSingle();
+          if (created) userProfile = created;
+        } catch (e) {
+          console.warn('Profile upsert fallback:', e);
+        }
+      }
+
+      const me: Me = {
+        id: u.id,
+        name: userProfile?.display_name || u.user_metadata?.full_name || u.user_metadata?.name || meRef.current.name || 'You',
+        user: userProfile?.username || u.user_metadata?.username || u.user_metadata?.user_name || u.email?.split('@')[0] || meRef.current.user || 'you',
+        bio: userProfile?.bio || meRef.current.bio || '',
+        avatar: userProfile?.avatar_url || u.user_metadata?.avatar_url || u.user_metadata?.picture || meRef.current.avatar || null,
+        banner: userProfile?.banner_url || meRef.current.banner || null,
+        email: u.email,
+      };
+
+      dispatch({ type: 'signIn', me });
+      loadSupabaseData(u.id);
+    };
+
+    // Check existing auth session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      syncUserSession(session);
     });
 
     // Listen to Auth State Changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .maybeSingle()
-          .then(async ({ data: profile, error: pErr }) => {
-            if (pErr) {
-              console.warn('Profiles table check on auth state change:', pErr.message);
-              return;
-            }
-            let userProfile = profile;
-            if (!userProfile) {
-              const cleanUser =
-                (session.user.user_metadata?.username || session.user.email?.split('@')[0] || 'user')
-                  .toLowerCase()
-                  .replace(/[^a-z0-9._]/g, '');
-              const { data: created } = await supabase
-                .from('profiles')
-                .upsert({
-                  id: session.user.id,
-                  username: cleanUser || 'user_' + session.user.id.slice(0, 6),
-                  display_name: session.user.user_metadata?.full_name || 'You',
-                })
-                .select('*')
-                .maybeSingle();
-              userProfile = created;
-            }
-
-            const me: Me = {
-              id: session.user.id,
-              name: userProfile?.display_name || session.user.user_metadata?.full_name || meRef.current.name,
-              user: userProfile?.username || session.user.email?.split('@')[0] || meRef.current.user,
-              bio: userProfile?.bio || meRef.current.bio || '',
-              avatar: userProfile?.avatar_url || session.user.user_metadata?.avatar_url || meRef.current.avatar || null,
-              banner: userProfile?.banner_url || meRef.current.banner || null,
-              email: session.user.email,
-            };
-            dispatch({ type: 'signIn', me });
-            loadSupabaseData(session.user.id);
-          });
-      } else {
-        dispatch({ type: 'signOut' });
-        loadSupabaseData();
-      }
+      syncUserSession(session);
     });
 
     // Realtime Postgres Channel Subscription
