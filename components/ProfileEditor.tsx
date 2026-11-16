@@ -131,9 +131,37 @@ export default function ProfileEditor({ open, onClose, onSaved }: Props) {
               style={{
                 position: 'absolute',
                 inset: 0,
-                background: 'rgba(0,0,0,0.22)',
+                background: 'rgba(0,0,0,0.28)',
               }}
             />
+
+            {/* Center Quote Overlay */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                padding: '0 20px',
+                pointerEvents: 'none',
+              }}
+            >
+              <p
+                style={{
+                  fontFamily: 'var(--font-serif, "Playfair Display", Georgia, serif)',
+                  fontStyle: 'italic',
+                  fontSize: '0.84rem',
+                  color: '#FFFFFF',
+                  textShadow: '0 1.5px 6px rgba(0,0,0,0.55)',
+                  margin: 0,
+                  opacity: 0.95,
+                }}
+              >
+                “Words that linger in quiet corners.”
+              </p>
+            </div>
 
             {/* Change Banner Button */}
             <button
@@ -145,7 +173,7 @@ export default function ProfileEditor({ open, onClose, onSaved }: Props) {
                 top: 10,
                 right: 10,
                 background: 'rgba(255,255,255,0.92)',
-                color: '#18181B',
+                color: '#052BA8',
                 border: 'none',
                 borderRadius: 999,
                 padding: '6px 12px',
@@ -159,7 +187,7 @@ export default function ProfileEditor({ open, onClose, onSaved }: Props) {
               }}
             >
               <PhotoIcon />
-              <span>{banner ? 'Change banner' : 'Upload banner'}</span>
+              <span>{banner ? 'Change cover' : '+ Add cover photo'}</span>
             </button>
 
             {banner && (
@@ -181,7 +209,7 @@ export default function ProfileEditor({ open, onClose, onSaved }: Props) {
                   cursor: 'pointer',
                 }}
               >
-                Reset banner
+                Reset cover
               </button>
             )}
           </div>
@@ -207,7 +235,7 @@ export default function ProfileEditor({ open, onClose, onSaved }: Props) {
                 height: 84,
                 borderRadius: '50%',
                 backgroundColor: '#EDE8DF',
-                backgroundImage: avatar ? `url("${avatar}")` : undefined,
+                backgroundImage: `url("${avatar || '/default-avatar.jpg'}")`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 display: 'grid',
@@ -219,19 +247,6 @@ export default function ProfileEditor({ open, onClose, onSaved }: Props) {
                 color: '#052BA8',
               }}
             >
-              {!avatar && (
-                <span
-                  style={{
-                    width: '42px',
-                    height: '42px',
-                    display: 'grid',
-                    placeItems: 'center',
-                    color: '#052BA8',
-                  }}
-                >
-                  <UserIcon />
-                </span>
-              )}
               <span
                 style={{
                   position: 'absolute',

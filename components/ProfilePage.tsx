@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import type { Quote, ThemeMode } from '@/lib/types';
 import { useStore } from '@/lib/store';
-import { cardStyle, fmt, titleName } from '@/lib/utils';
+import { cardStyle, fmt, resizeImage, titleName } from '@/lib/utils';
 import { MoonIcon, UserIcon } from './Icons';
 
 interface Props {
@@ -31,11 +31,39 @@ export default function ProfilePage({
   onSignOut,
   notify,
 }: Props) {
-  const { visible, me, follows, followers, toggleFollow, block, theme, setTheme } = useStore();
+  const { visible, me, follows, followers, toggleFollow, block, theme, setTheme, updateMe } = useStore();
   const backBtnRef = useRef<HTMLButtonElement>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const self = userKey === 'me';
   const [tab, setTab] = useState<ProfileTab>('quotes');
   const [showSettings, setShowSettings] = useState(false);
+
+  async function handleDirectBannerUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const resized = await resizeImage(file);
+      updateMe({ banner: resized });
+      notify('Cover photo updated');
+    } catch {
+      notify('Could not load that image. Please choose another.');
+    }
+  }
+
+  async function handleDirectAvatarUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const resized = await resizeImage(file);
+      updateMe({ avatar: resized });
+      notify('Profile photo updated');
+    } catch {
+      notify('Could not load that image. Please choose another.');
+    }
+  }
 
   const name = self ? me.name : titleName(userKey);
   const user = self ? me.user : userKey;
@@ -81,6 +109,30 @@ export default function ProfilePage({
         className="pro-banner"
         style={{ backgroundImage: `url("${bannerImg}")` }}
       >
+        {/* Scrim Overlay for Elegance & High Contrast */}
+        <div className="pro-banner-scrim" />
+
+        {/* Hidden File Inputs for Direct 1-Tap Upload */}
+        {self && (
+          <>
+            <input
+              ref={bannerFileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleDirectBannerUpload}
+            />
+            <input
+              ref={avatarFileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleDirectAvatarUpload}
+            />
+          </>
+        )}
+
+        {/* Floating Back Button */}
         <button
           ref={backBtnRef}
           type="button"
@@ -103,33 +155,39 @@ export default function ProfilePage({
         </button>
 
         {self && (
-          <>
-            <button
-              type="button"
-              className="pro-icon-btn pro-btn-settings"
-              onClick={() => setShowSettings(!showSettings)}
-              aria-label="Appearance & Settings"
+          <button
+            type="button"
+            className="pro-icon-btn pro-btn-settings"
+            onClick={() => setShowSettings(!showSettings)}
+            aria-label="Appearance & Settings"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-              </svg>
-            </button>
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
+          </button>
+        )}
 
+        {/* Centered Aesthetic Quote on Cover + Under it: Add Cover Photo Button */}
+        <div className="pro-banner-center">
+          <p className="pro-banner-quote">
+            “Words that linger in quiet corners.”
+          </p>
+          {self && (
             <button
               type="button"
-              className="pro-banner-edit-pill"
-              onClick={onEdit}
-              aria-label="Edit cover banner"
+              className="pro-banner-add-btn"
+              onClick={() => bannerFileInputRef.current?.click()}
+              aria-label="Add or change cover photo"
             >
               <svg
                 width="14"
@@ -141,27 +199,55 @@ export default function ProfilePage({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <rect x="3" y="3" width="18" height="18" rx="4" />
-                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
-                <path d="M21 15l-5-5L5 21" />
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
               </svg>
-              <span>Edit cover</span>
+              <span>{me.banner ? 'Change cover photo' : '+ Add cover photo'}</span>
             </button>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Circular Avatar overlapping the banner */}
       <div className="pro-avatar-container">
-        <div
-          className="pro-avatar"
-          style={self && me.avatar ? { backgroundImage: `url("${me.avatar}")` } : undefined}
-          onClick={self ? onEdit : undefined}
-          role={self ? 'button' : undefined}
-          tabIndex={self ? 0 : undefined}
-          aria-label={self ? 'Change profile photo' : undefined}
-        >
-          {(!self || !me.avatar) && <UserIcon />}
+        <div className="pro-avatar-wrapper">
+          <div
+            className="pro-avatar"
+            style={
+              self
+                ? { backgroundImage: `url("${me.avatar || '/default-avatar.jpg'}")` }
+                : { backgroundImage: `url('/default-avatar.jpg')` }
+            }
+            onClick={() => (self ? avatarFileInputRef.current?.click() : undefined)}
+            role={self ? 'button' : undefined}
+            tabIndex={self ? 0 : undefined}
+            aria-label={self ? 'Change profile photo' : undefined}
+          >
+          </div>
+
+          {self && (
+            <button
+              type="button"
+              className="pro-avatar-camera-badge"
+              onClick={() => avatarFileInputRef.current?.click()}
+              aria-label="Upload profile photo"
+              title="Change profile photo"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 
