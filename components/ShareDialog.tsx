@@ -7,6 +7,7 @@ import { authorOf } from '@/lib/utils';
 import { useDialog } from '@/lib/useDialog';
 import { renderShareCard, type ShareFormat, type ShareStyle } from '@/lib/shareCard';
 import { CTA, HASHTAGS, TAGLINE } from '@/lib/brand';
+import { DownloadIcon, ShareIcon } from './Icons';
 
 interface Props { quote: Quote | null; onClose: () => void; notify: Notify }
 interface Out { url: string; blob: Blob }
@@ -80,11 +81,27 @@ export default function ShareDialog({ quote, onClose, notify }: Props) {
         </div>
 
         <p className="muted">On Instagram, add it to your Story or Post. On a phone, Share opens it straight there.</p>
-        <div className="row">
+        <div className="row share-actions-row">
           <button className="chip" onClick={onClose}>Close</button>
           <button className="chip" onClick={copyCaption}>Copy caption</button>
-          {out && <a className="post" href={out.url} download={fileName} style={{ textAlign: 'center', flex: 1 }}>Save image</a>}
-          {canShare && out && <button className="post" onClick={share}>Share</button>}
+          {out && (
+            <a
+              className="post save-image-btn"
+              href={out.url}
+              download={fileName}
+              title="Save image"
+              aria-label="Save image"
+            >
+              <DownloadIcon />
+              <span>Save image</span>
+            </a>
+          )}
+          {canShare && out && (
+            <button className="post share-action-btn" onClick={share}>
+              <ShareIcon />
+              <span>Share</span>
+            </button>
+          )}
         </div>
       </div>
     </dialog>
